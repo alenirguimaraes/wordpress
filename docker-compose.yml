@@ -1,0 +1,113 @@
+# docker-compose.yml developed by Alenir Guimaraes on 22 December 2021
+version: "3.9"  
+services:
+# Create a container with container_name mysql in wordpress-net network
+  mysql-wordpress:
+    container_name: mysql-wordpress
+    image: mysql:8.0
+    volumes:
+      - ./mysql/:/var/lib/mysql
+    environment:
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: user@wordpress
+      MYSQL_ROOT_PASSWORD: root@wordpress
+    command: ['mysqld', '--character-set-server=utf8mb4', '--collation-server=utf8mb4_unicode_ci', '--authentication_policy=mysql_native_password']
+    restart: unless-stopped
+    networks:
+      - network
+# Create a container with container_name wordpress-1 in wordpress-net network
+  wordpress-1:
+    container_name: wordpress-1
+    image: wordpress:latest
+    volumes:
+      - ./html/:/var/www/html
+    depends_on:
+      - mysql-wordpress
+    environment:
+      WORDPRESS_DB_HOST: mysql-wordpress:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: user@wordpress
+      WORDPRESS_DB_NAME: wordpress
+      ServerName: hostname -i
+    command: ['apache2-foreground']
+    ports:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - network
+# Create a container with container_name wordpress-2 in wordpress-net network
+  wordpress-2:
+    container_name: wordpress-2
+    image: wordpress:latest
+    volumes:
+      - ./html/:/var/www/html
+    depends_on:
+      - mysql-wordpress
+    environment:
+      WORDPRESS_DB_HOST: mysql-wordpress:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: user@wordpress
+      WORDPRESS_DB_NAME: wordpress
+      ServerName: hostname -i
+    command: ['apache2-foreground']
+    ports:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - network
+# Create a container with container_name wordpress-3 in wordpress-net network
+  wordpress-3:
+    container_name: wordpress-3
+    depends_on:
+      - mysql-wordpress
+    image: wordpress:latest
+    volumes:
+      - ./html/:/var/www/html
+    environment:
+      WORDPRESS_DB_HOST: mysql-wordpress:3306
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: user@wordpress
+      WORDPRESS_DB_NAME: wordpress
+    command: ['apache2-foreground']
+    ports:
+      - "80"
+    restart: unless-stopped
+    networks:
+      - network
+# Create a container with container_name nginx in wordpress_net network
+  nginx:
+    container_name: nginx
+    depends_on:
+      - "wordpress-1"
+      - "wordpress-2"
+      - "wordpress-3"
+    image: nginx:latest
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./html/:/usr/share/nginx/html:ro
+    command: ['nginx', '-g', 'daemon off;']
+    ports: 
+      - "80:80"
+    restart: unless-stopped
+    networks:
+      - network
+# Create a container with container_name: phpmyadmin in wordpress_net network
+  phpmyadmin:
+    container_name: phpmyadmin
+    links:
+      - mysql-wordpress
+    depends_on:
+      - mysql-wordpress
+    image: phpmyadmin:latest
+    environment:
+      PMA_HOST: mysql-wordpress
+    ports:
+      - 8080:80
+    restart: unless-stopped
+    networks:
+      - network
+# Create a wordpress-net network 
+networks:
+  network:
+    driver: bridge
